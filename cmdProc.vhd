@@ -38,6 +38,7 @@ architecture FSM of cmdProc is
         DATA_TX,
         DATA_WAIT,
         WAIT_DR_LOW,
+        REQ_DATA,
         -- Newline (LF + CR) before p/l output
         SEND_LF,
         SEND_LF_WAIT,
@@ -356,8 +357,13 @@ begin
                 if seq_done_flag = '1' then
                     next_state <= IDLE;
                 elsif dataReady = '0' then
-                    next_state <= WAIT_DATA;
+                    next_state <= REQ_DATA;
                 end if;
+
+            -- REQ_DATA: pulse start to request next byte from dataConsume
+            when REQ_DATA =>
+                start <= '1';
+                next_state <= WAIT_DATA;
 
             -- ============================================================
             -- NEWLINE (shared by 'p' and 'l' commands)
