@@ -312,11 +312,11 @@ begin
             -- 'a' COMMAND: DATA PROCESSING + STREAMING
             -- ============================================================
 
-            -- START_DP: pulse start for one cycle
+            -- START_DP: pulse start, then send newline before streaming
             when START_DP =>
                 start <= '1';
                 next_nibble_cnt <= (others => '0');
-                next_state      <= WAIT_DATA;
+                next_state      <= SEND_LF;
 
             -- WAIT_DATA: wait for dataReady (byte available from dataConsume)
             when WAIT_DATA =>
@@ -358,7 +358,7 @@ begin
                 next_state <= WAIT_DATA;
 
             -- ============================================================
-            -- NEWLINE (shared by 'p' and 'l' commands)
+            -- NEWLINE (shared by all commands)
             -- ============================================================
 
             when SEND_LF =>
@@ -380,15 +380,18 @@ begin
             when SEND_CR_WAIT =>
                 txData <= x"0D";
                 if txdone = '1' then
-                    if cmd_type = CMD_L then
-                        next_byte_idx   <= (others => '0');
-                        next_nibble_cnt <= (others => '0');
-                        next_state      <= RES_PREP;
-                    else
-                        -- CMD_P
-                        next_nibble_cnt <= (others => '0');
-                        next_state      <= PEAK_PREP;
-                    end if;
+                    case cmd_type is
+                        when CMD_A =>
+                            next_state <= WAIT_DATA;
+                        when CMD_L =>
+                            next_byte_idx   <= (others => '0');
+                            next_nibble_cnt <= (others => '0');
+                            next_state      <= RES_PREP;
+                        when others =>
+                            -- CMD_P
+                            next_nibble_cnt <= (others => '0');
+                            next_state      <= PEAK_PREP;
+                    end case;
                 end if;
 
             -- ============================================================
