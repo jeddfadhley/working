@@ -43,6 +43,10 @@ architecture FSM of cmdProc is
         SEND_LF_WAIT,
         SEND_CR,
         SEND_CR_WAIT,
+        SEND_LF2,
+        SEND_LF2_WAIT,
+        SEND_CR2,
+        SEND_CR2_WAIT,
         -- 'l' command: print 7 result bytes
         RES_PREP,
         RES_TX,
@@ -378,6 +382,29 @@ begin
                 next_state <= SEND_CR_WAIT;
 
             when SEND_CR_WAIT =>
+                txData <= x"0D";
+                if txdone = '1' then
+                    next_state <= SEND_LF2;
+                end if;
+
+            -- Second newline
+            when SEND_LF2 =>
+                txData <= x"0A";
+                txnow  <= '1';
+                next_state <= SEND_LF2_WAIT;
+
+            when SEND_LF2_WAIT =>
+                txData <= x"0A";
+                if txdone = '1' then
+                    next_state <= SEND_CR2;
+                end if;
+
+            when SEND_CR2 =>
+                txData <= x"0D";
+                txnow  <= '1';
+                next_state <= SEND_CR2_WAIT;
+
+            when SEND_CR2_WAIT =>
                 txData <= x"0D";
                 if txdone = '1' then
                     case cmd_type is
