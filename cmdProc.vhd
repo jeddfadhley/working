@@ -315,13 +315,13 @@ begin
             -- WAIT_DATA: wait for streaming byte or sequence complete
             ----------------------------------------------------------------
             when WAIT_DATA =>
-                if dataReady = '1' then
+                if seq_done_flag = '1' then
+                    next_byte_idx   <= (others => '0');
+                    next_state      <= RES_PREP;
+                elsif dataReady = '1' then
                     next_tx_byte    <= byte;
                     next_nibble_cnt <= (others => '0');
                     next_state      <= DATA_TX;
-                elsif seq_done_flag = '1' then
-                    next_byte_idx   <= (others => '0');
-                    next_state      <= RES_PREP;
                 end if;
 
             -- =============================================================
@@ -347,7 +347,12 @@ begin
                         next_state      <= DATA_TX;
                     else
                         next_nibble_cnt <= (others => '0');
-                        next_state      <= WAIT_DR_LOW;
+                        if seq_done_flag = '1' then
+                            next_byte_idx <= (others => '0');
+                            next_state    <= RES_PREP;
+                        else
+                            next_state <= WAIT_DR_LOW;
+                        end if;
                     end if;
                 end if;
 
@@ -355,7 +360,10 @@ begin
             -- WAIT_DR_LOW: wait for dataReady to deassert
             ----------------------------------------------------------------
             when WAIT_DR_LOW =>
-                if dataReady = '0' then
+                if seq_done_flag = '1' then
+                    next_byte_idx <= (others => '0');
+                    next_state    <= RES_PREP;
+                elsif dataReady = '0' then
                     next_state <= WAIT_DATA;
                 end if;
 
