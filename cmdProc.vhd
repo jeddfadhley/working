@@ -177,13 +177,13 @@ begin
         end if;
     end process;
 
-    -- numWords_bcd register: latch BCD values when entering START_DP
+    -- numWords_bcd register: latch BCD values when 'a' command complete (3 digits entered)
     numwords_reg: process(clk)
     begin
         if rising_edge(clk) then
             if reset = '1' then
                 reg_numWords <= (others => "1001");
-            elsif state = ECHO_WAIT and next_state = START_DP then
+            elsif state = ECHO_WAIT and next_state = SEND_LF and cmd_type = CMD_A then
                 reg_numWords(2) <= std_logic_vector(hundreds);
                 reg_numWords(1) <= std_logic_vector(tens);
                 reg_numWords(0) <= std_logic_vector(ones);
@@ -282,7 +282,7 @@ begin
                             next_state <= IDLE;
                         when CMD_A =>
                             if digit_count = 3 then
-                                next_state <= START_DP;
+                                next_state <= SEND_LF;
                             else
                                 next_state <= GET_DIGIT;
                             end if;
@@ -316,11 +316,11 @@ begin
             -- 'a' COMMAND: DATA PROCESSING + STREAMING
             -- ============================================================
 
-            -- START_DP: pulse start, then send newline before streaming
+            -- START_DP: pulse start after newlines already sent
             when START_DP =>
                 start <= '1';
                 next_nibble_cnt <= (others => '0');
-                next_state      <= SEND_LF;
+                next_state      <= WAIT_DATA;
 
             -- WAIT_DATA: wait for dataReady (byte available from dataConsume)
             when WAIT_DATA =>
@@ -409,7 +409,7 @@ begin
                 if txdone = '1' then
                     case cmd_type is
                         when CMD_A =>
-                            next_state <= WAIT_DATA;
+                            next_state <= START_DP;
                         when CMD_L =>
                             next_byte_idx   <= (others => '0');
                             next_nibble_cnt <= (others => '0');
