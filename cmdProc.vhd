@@ -93,6 +93,9 @@ architecture FSM of cmdProc is
     -- Sticky flag: set when seqDone fires, cleared on START_DP
     signal seq_done_flag : std_logic := '0';
 
+    -- Registered start: held high from START_DP until seqDone
+    signal reg_start : std_logic := '0';
+
     function to_hex(nibble : std_logic_vector(3 downto 0)) return std_logic_vector is
     begin
         case nibble is
@@ -129,6 +132,7 @@ architecture FSM of cmdProc is
 begin
 
     numWords_bcd <= reg_numWords;
+    start        <= reg_start;
 
     -- State register
     state_reg: process(clk)
@@ -214,6 +218,20 @@ begin
         end if;
     end process;
 
+    -- Registered start: high from START_DP entry until seqDone
+    start_reg: process(clk)
+    begin
+        if rising_edge(clk) then
+            if reset = '1' then
+                reg_start <= '0';
+            elsif state = ECHO_WAIT and next_state = START_DP then
+                reg_start <= '1';
+            elsif seq_done_flag = '1' then
+                reg_start <= '0';
+            end if;
+        end if;
+    end process;
+
     -- Combinational logic: next state + outputs
     comb_logic: process(state, rxnow, rxData, txdone, dataReady, byte,
                         seq_done_flag, echo_reg, cmd_type, hundreds, tens, ones,
@@ -237,7 +255,6 @@ begin
         rxdone <= '0';
         txnow  <= '0';
         txData <= (others => '0');
-        start  <= '0';
 
         case state is
 
@@ -311,9 +328,8 @@ begin
             -- 'a' COMMAND: DATA PROCESSING + STREAMING
             -- ============================================================
 
-            -- START_DP: pulse start for one cycle
+            -- START_DP: start is held high by reg_start process
             when START_DP =>
-                start <= '1';
                 next_nibble_cnt <= (others => '0');
                 next_state      <= WAIT_DATA;
 
